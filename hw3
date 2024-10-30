@@ -1,0 +1,221 @@
+label<-c(T, F, F, F, T, F, F, F, F, F, F, F, T, F, T, F, F, F, T, T, F, F, F, F, F, F, T, F, F, F, T, T, F, T, F, T,F, F)
+number<-c(6700, 6950, 7820, 8790, 9120, 9660, 9820, 11310, 11690, 11850, 11880, 12140, 12200, 12870, 13150, 13330, 13470, 14040, 14300, 17520, 17540, 17890, 18450, 18960, 18980, 19410, 20100, 20100, 20150, 20320, 20900, 22700, 23490, 26510, 27410, 27490, 27890, 28100)
+data<-data.frame(number, label)
+data$label <- as.numeric(data$label)
+# 安裝套件 (若尚未安裝)
+if (!require("survminer")) install.packages("survminer")
+if (!require("survival")) install.packages("survival")
+
+# 載入套件
+library(survminer)
+library(survival)
+
+# 建立生存物件
+data$label <- as.numeric(data$label) # 確保label為數值型別
+surv_object <- Surv(time = data$number, event = data$label, conf.int = 0.9, conf.type = "logit")
+
+# 建立Kaplan-Meier模型
+fit <- survfit(surv_object ~ 1, data = data)
+
+# 繪製生存曲線
+ggsurvplot(fit,fun = "event",
+           conf.int = TRUE,            # 顯示信賴區間
+           pval = TRUE,                # 顯示p值
+           risk.table = TRUE,          # 顯示風險表
+           ggtheme = theme_minimal(),  # 使用簡潔的主題
+           title = "",
+           xlab = "kilometers",
+           ylab = "proportion failing",
+           data = data)
+
+===========================================================================================
+
+non_est<-data.frame(
+  ti = c(6700,6950,7820,8790,9120,9660,9820,11310,11690, 11850,11880,12140,12200,12870,13150,13330,13470,14040,14300,
+         17520,17540,17890,18450,18960,18980,19410,20100,20100,20150,20320,20900,22700,23490,26510,27410,27490,27890,28100),
+  dj = c(1,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,1,1,0,1,0,1,0,0),
+  rj = c(0,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,0,0,1,1,1,1,1,1,0,1,1,1,0,0,1,0,1,0,1,1),
+  nj = c(seq(38,1))
+)
+
+# 初始化存储存活率的向量
+censor_St_hat <- c()
+install.packages("survival")
+install.packages("survminer")
+library(survival)
+library(survminer)
+
+time <- non_est$ti
+status <- non_est$dj  # 事件發生（1）或審查（0）
+
+# 建立 Kaplan-Meier 模型
+km_fit <- survfit(Surv(time, status) ~ 1, conf.int = 0.90,conf.type="logit")
+# 提取存活率估计
+km_summary <- summary(km_fit)
+
+# 提取存活时间、存活率估计 (surv)、上限、下限
+# time_points <- km_summary$time         # 存活时间
+# surv_probs <- km_summary$surv          # 存活率估计
+lower_conf <- km_summary$lower         # 下限置信区间
+upper_conf <- km_summary$upper 
+
+
+pj_hat=c()
+St_hat=c()
+lower_bound=c()
+upper_bound=c() 
+
+n=1
+for(j in 1:38){
+  if (non_est$dj[j]==1){
+    pj_hat=append(pj_hat,1/non_est$nj[j])
+    lower_bound=append(lower_bound,lower_conf[n])
+    upper_bound=append(upper_bound,upper_conf[n])
+    n=n+1
+    if (length(St_hat)==0){St_hat=append(St_hat,1-pj_hat[j])}
+    else{St_hat=append(St_hat,St_hat[j-1]*(1-pj_hat[j]))}    
+  }else{
+    pj_hat=append(pj_hat,pj_hat[j-1])
+    St_hat=append(St_hat,St_hat[j-1])
+    if(length(lower_bound)==0){
+      lower_bound=append(lower_bound,lower_conf[1])
+      upper_bound=append(upper_bound,upper_conf[1])
+    }else{
+      lower_bound=append(lower_bound,lower_conf[n-1])
+      upper_bound=append(upper_bound,upper_conf[n-1])
+    }
+  }
+}
+pj_hat=c(0,pj_hat)
+St_hat=c(1,St_hat)
+lower_bound=c(1,lower_bound)
+upper_bound=c(1,upper_bound)
+km<-data.frame(time=c(0,non_est$ti),pj_hat=pj_hat,qj_hat=1-pj_hat,St_hat=St_hat,Ft_hat=1-St_hat,lower_bound=lower_bound,upper_bound=upper_bound)
+
+
+# 将设限时间点提取出来
+censor_times <- non_est$ti[non_est$rj == 1 & non_est$dj == 0]  # 仅保留 rj=1 且不是事件发生的时间点
+
+# 初始化存储存活率的向量
+censor_St_hat <- numeric(length(censor_times))
+
+# 循环处理每一个设限时间点
+for (i in 1:length(censor_times)) {
+  if (censor_times[i] %in% km$time) {
+    # 如果时间点在km中，直接取存活率
+    censor_St_hat[i] <- St_hat[km$time == censor_times[i]]
+  } else {
+    # 如果时间点不在km中，取小于该时间点的最大值的存活率
+    censor_St_hat[i] <- min(St_hat[km$time < censor_times[i]], na.rm = TRUE)
+  }
+}
+
+# 打印结果
+print(censor_St_hat)
+
+# 创建一个包含设限点的 data frame
+censor_points <- data.frame(time = censor_times, St_hat = censor_St_hat)
+
+
+km$St_hat[which(km$time==12200)]
+
+x11()
+ggplot(km, aes(x = time, y = St_hat)) +
+  geom_step() +
+  geom_step(aes(y = lower_bound), color = "blue", linetype = "dashed") +  # 下界的階梯線
+  geom_step(aes(y = upper_bound), color = "blue", linetype = "dashed") +  # 上界的階梯線
+  geom_point(data = censor_points, aes(x = time, y = St_hat, color = "censor", shape = "censor"), 
+             size = 3) +  # 設限點
+  scale_color_manual(name = "Legend", values = c("censor" = "red")) +  # 設定設限點顏色
+  scale_shape_manual(name = "Legend", values = c("censor" = 4)) +  # 設定設限點形狀 (叉叉)
+  labs(title = "Kaplan-Meier Survival Curve with Stepwise Confidence Interval",
+       x = "Time",
+       y = "Survival Probability") +
+  theme_minimal()
+
+
+
+
+
+
+
+
+
+
+
+x11()
+ggplot(km, aes(x = time, y = Ft_hat)) +
+  geom_step() +
+  geom_step(aes(y = 1-lower_bound), color = "blue", linetype = "dashed") +  # 下界的階梯線
+  geom_step(aes(y = 1-upper_bound), color = "blue", linetype = "dashed") +  # 上界的階梯線
+  geom_point(data = censor_points, aes(x = time, y = 1-St_hat, color = "censor", shape = "censor"), 
+             size = 3) +  # 設限點
+  scale_color_manual(name = "Legend", values = c("censor" = "red")) +  # 設定設限點顏色
+  scale_shape_manual(name = "Legend", values = c("censor" = 4)) +  # 設定設限點形狀 (叉叉)
+  labs(title = "Kaplan-Meier Survival Curve with Stepwise Confidence Interval",
+       x = "Time",
+       y = "Survival Probability") +
+  theme_minimal()
+
+
+
+
+se_hat=c()
+n=1
+for (i in 1:38){
+  if (non_est$dj[i]==1){
+    se_hat=append(se_hat,km_summary$std.err[n])
+    n=n+1
+  }else{
+    se_hat=append(se_hat,km_summary$std.err[n-1])
+  }
+}
+se_hat
+F_upp=1-lower_bound[2:39]
+F_low=1-upper_bound[2:39]
+gr<-data.frame(upper_bound=F_upp,lower_bound=F_low,time=non_est$ti,Proportion_Failing=km$Ft_hat[2:39])
+gr
+
+
+
+
+
+
+
+
+library(ggplot2)
+library(dplyr)
+
+# 創建分組標記，當 `Proportion_Failing` 值變化時開始新的分組
+gr <- gr %>%
+  mutate(group = cumsum(Proportion_Failing != lag(Proportion_Failing, default = first(Proportion_Failing))))
+
+# 繪製圖形，包含上下界
+ggplot(gr, aes(x = time, y = Proportion_Failing, group = group)) +
+  geom_line(color = "blue") +
+  geom_line(aes(y = upper_bound), color = "red", linetype = "dashed") +
+  geom_line(aes(y = lower_bound), color = "green", linetype = "dashed") +
+  labs(x = "Time", y = "Proportion Failing") +
+  theme_minimal() +
+  ggtitle("Plot with Segmented Lines for Proportion Failing and Confidence Bounds")
+
+
+
+
+
+Sh=km$St_hat[2:39]
+se_h=c()
+t=$ti
+
+
+  
+  
+  
+  
+  
+km_summary$std.err
+km_summary[which(km_summary$time==max(km_summary$time[km_summary$time<=28100]))]
+s_km=summary(km_fit)
+s_km$std.err[which(s_km$time==max(s_km$time[s_km$time<=28100]))]
+
+  
