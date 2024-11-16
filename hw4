@@ -17,6 +17,7 @@ sd<-sum_surv$std.err
 ci_low<-rep(0, 55)
 ci_up<-rep(0, 55)
 
+e = 3.25
 for(i in 1:length(ci_low)){
   w = exp(e*sd[i]/(estimate[i]*(1-estimate[i])))
   ci_low[i] = (estimate[i]/(estimate[i]+(1-estimate[i])*w))
@@ -27,14 +28,137 @@ df = data.frame(cycle = x[1:55], prob = estimate, up = ci_up[1:55], low = ci_low
 ggplot(df, aes(x = cycle)) +
   geom_step(aes(y = prob)) +
   geom_step(aes(y = up), color = "blue") +
-  geom_step(aes(y = low), color = "red")#plot's type problem
+  geom_step(aes(y = low), color = "red") +#plot's type problem
+  xlab("thousands of cycles") + ylab("proportion failing") + 
+  ggtitle("graph 6.5")
+  
+  
 
 #6.6
 quantile_<-rep(0, 55)
 sigma_<-sd(data_$cycle_)
 miu<-mean(data_$cycle_)
-for(i in 1:55){
-  quantile_[i] = exp(miu)*((-log(1-estimate[i], 10))^(sigma_))
+
+plot(log(sum_surv$time, 10), log(-log(1-estimate)))
+
+proportion <- c(0.0005, 0.001, 0.003, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.98, 0.999)
+proportion_axis <- log(-log(1-proportion))
+
+thousand_cycles <- c(50, 100, 150, 200, 250, 300, 350)
+thousand_cycles_axis <- log(thousand_cycles, 10)
+
+ci_low_6 <- log(-log(1-ci_low))
+ci_up_6 <- log(-log(1-ci_up))
+
+plot(
+  #main = "Graph 6.6", 
+  log(sum_surv$time, 10), log(-log(1-estimate)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(50, 10), log(350, 10)),
+  ylim = c(log(-log(1-0.0005)), log(-log(1-0.999)))
+)
+
+for(i in 1:54){
+  lines(c(log(sum_surv$time[i], 10), log(sum_surv$time[i+1], 10)),rep(ci_low_6[i], 2), col = "blue", lty = 2)
+  lines(c(log(sum_surv$time[i], 10), log(sum_surv$time[i+1], 10)),rep(ci_up_6[i], 2), col = "red", lty = 2)
 }
-plot(log(sum_surv$time, 10), scale(log(-log(1-estimate, 10), 10)))
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = thousand_cycles_axis, labels = thousand_cycles)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log Thousands of Cycles", side = 3, line = 2)
+mtext("Proportion Failing", side = 2, line = 3)
+mtext("Thousands of Cycles", side = 1, line = 2)
+
+box()
+
+
+#6.7 log-normal
+plot(
+  log(sum_surv$time, 10), qnorm(estimate),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(50, 10), log(350, 10)),
+  ylim = c(-3, 2)
+)
+
+ci_low_7 <- qnorm(ci_low)
+ci_up_7 <- qnorm(ci_up)
+
+for(i in 1:54){
+  lines(c(log(sum_surv$time[i], 10), log(sum_surv$time[i+1], 10)),rep(ci_low_7[i], 2), col = "blue", lty = 2)
+  lines(c(log(sum_surv$time[i], 10), log(sum_surv$time[i+1], 10)),rep(ci_up_7[i], 2), col = "red", lty = 2)
+}
+
+proportion_axis_7 <- qnorm(proportion)
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis_7, labels = proportion, las = 1)
+axis(1, thousand_cycles_axis, labels = thousand_cycles)
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log Thousands of Cycles", side = 3, line = 2)
+mtext("Proportion Failing", side = 2, line = 2)
+mtext("Thousands of Cycles", side = 1, line = 2)
+
+box()
+
+#6.8
+data_6.8<-data.frame(
+  time = c(6700,6950,7820,8790,9120,9660,9820,11310,11690, 11850,11880,12140,12200,12870,13150,13330,13470,14040,14300,
+           17520,17540,17890,18450,18960,18980,19410,20100,20100,20150,20320,20900,22700,23490,26510,27410,27490,27890,28100),
+  dj = c(1,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,1,1,0,1,0,1,0,0),
+  rj = c(0,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,0,0,1,1,1,1,1,1,0,1,1,1,0,0,1,0,1,0,1,1),
+  nj = c(seq(38,1))
+)
+surv_object_6.8<-survfit(Surv(data_6.8$time, data_6.8$dj)~1, conf.int = 0.95, conf.type = "logit")
+sum_surv_6.8<-summary(surv_object_6.8)  #survival is estimate of f
+estimate_6.8<-1-sum_surv_6.8$surv
+sd_6.8<-sum_surv_6.8$std.err
+ci_low_6.8<-rep(0, 11)
+ci_up_6.8<-rep(0, 11)
+e = 3.25
+for(i in 1:length(ci_low_6.8)){
+  w = exp(e*sd_6.8[i]/(estimate_6.8[i]*(1-estimate_6.8[i])))
+  ci_low_6.8[i] = (estimate_6.8[i]/(estimate_6.8[i]+(1-estimate_6.8[i])*w))
+  ci_up_6.8[i] = (estimate_6.8[i]/(estimate_6.8[i]+(1-estimate_6.8[i])/w))
+}
+ci_up_6.8[1] = ci_up_6.8[2]
+
+ci_low_6.8 <- log(-log(1-ci_low_6.8))
+ci_up_6.8 <- log(-log(1-ci_up_6.8))
+
+plot(
+  log(sum_surv_6.8$time, 10), log(-log(1-estimate_6.8)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(5000, 10), log(30000, 10)),
+  ylim = c(log(-log(1-0.0005)), log(-log(1-0.999)))
+)
+
+for(i in 1:10){
+  lines(c(log(sum_surv_6.8$time[i], 10), log(sum_surv_6.8$time[i+1], 10)),rep(ci_low_6.8[i], 2), col = "blue", lty = 2)
+  lines(c(log(sum_surv_6.8$time[i], 10), log(sum_surv_6.8$time[i+1], 10)),rep(ci_up_6.8[i], 2), col = "red", lty = 2)
+}
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log Kilometers", side = 3, line = 2)
+mtext("Proportion Failing", side = 2, line = 3)
+mtext("Kilometers", side = 1, line = 2)
+proportion_6.8 <- c(0.0005, 0.001, 0.003, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.98)
+proportion_axis_6.8 <- log(-log(1-proportion_6.8))
+kilometer<-c(5000, 10000, 15000, 20000, 25000, 30000)
+log_kilo<-log(kilometer, 10)
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis_6.8, labels = proportion_6.8, las = 1)
+axis(1, at = log_kilo, labels = kilometer)
+box()
 
