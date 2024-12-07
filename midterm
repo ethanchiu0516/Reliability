@@ -1,0 +1,186 @@
+library(survival)
+library(survminer)
+x<-c(8, 11, 12, 13, 19, 21, 28, 24, 26, 44, 80)
+d<-c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 40)
+data<-c()
+for(i in 1:length(x)){
+  data<-c(data, rep(x[i], d[i]))
+}
+d<-c(rep(1, 10), rep(0, 40))
+r<-c(rep(0, 10), rep(1, 40))
+n<-rep(0, 50)
+for(i in 1:50){n[i] = 50-i}
+data_<-data.frame(cycle_ = data, d_ = d, r_ = r, n_ = n)
+surv_object<-survfit(Surv(data_$cycle_, data_$d_)~1, conf.int = 0.95, conf.type = "logit")
+sum_surv<-summary(surv_object)
+estimate<-1-sum_surv$surv
+#a
+
+plot(sum_surv$time, -log(1-estimate))#nonparametric
+print(data.frame(time = sum_surv$time, Ft = -log(1-estimate)))
+
+
+#b
+#14, lec3
+
+se_f <- (estimate*(1-estimate)/50)^(1/2)
+ci_low <- estimate+qnorm(0.025)*se_f
+ci_up <- estimate-qnorm(0.025)*se_f
+#negative value, using logit transformation
+ci_low_logit <- (estimate)/(estimate+(1-estimate)*exp(qnorm(0.975)*se_f/(estimate*(1-estimate))))
+ci_up_logit <- (estimate)/(estimate+((1-estimate)/exp(qnorm(0.975)*se_f/(estimate*(1-estimate)))))
+#choose index 10
+print(c(ci_low_logit[10], ci_up_logit[10]))
+#end==================================================
+
+
+#c
+#R(theta)>critical
+critical <- exp((-1/2)*qchisq(0.95, df = 1))
+#plot
+mle_2 <- sum(data_$cycle_)/10
+mle_likelihood_fun <- (1/mle_2)^10*exp(-sum(data_$cycle_)/mle_2)
+mle_point <- seq(0, 1000, 0.01)
+plot(mle_point, ((1/mle_point)^10*exp(-sum(data_$cycle_)/mle_point))/mle_likelihood_fun,
+     ylab = "R(theta)", xlab = "theta"
+     )
+mle_float <- ((1/mle_point)^10*exp(-sum(data_$cycle_)/mle_point))/mle_likelihood_fun
+abline(h=critical, lwd = 3, col = "red")
+
+print(mle_point[((1/mle_point)^10*exp(-sum(data_$cycle_)/mle_point))/mle_likelihood_fun >= critical])
+#compute lower bound and upper bound
+for(i in 1:100000){
+  if(((1/mle_point[100000-i])^10*exp(-sum(data_$cycle_)/mle_point[100000-i]))/mle_likelihood_fun >= critical){
+    print(mle_point[100000-i])
+    break
+  }
+}
+for(i in 2:100000){
+  if(((1/mle_point[i])^10*exp(-sum(data_$cycle_)/mle_point[i]))/mle_likelihood_fun >= critical){
+    print(mle_point[i])
+    break
+  }
+}
+#add CI bound line
+abline(v = 194.2, lwd = 3, col = "red")
+abline(v = 679.73, lwd = 3, col = "red")
+
+#compute F(60) CI
+print(c(1-exp(-60/679.73), 1-exp(-60/194.2)))
+
+
+#4
+#a
+x_4<-c(7.74, 17.05, 20.46, 21.02, 22.66, 43.40, 47.30, 100)
+d_4 <- c(1, 1, 1, 1, 1, 1, 1, 4)
+data_4 <- c()
+for(i in 1:length(x_4)){
+  data_4<-c(data_4, rep(x_4[i], d_4[i]))
+}
+d_4<-c(rep(1, 7), rep(0, 4))
+r_4<-c(rep(0, 7), rep(1, 4))
+n_4<-rep(0, 11)
+for(i in 1:11){n_4[i] = 11-i}
+data_4<-data.frame(cycle_ = data_4, d_ = d_4, r_ = r_4, n_ = n_4)
+surv_object_4<-survfit(Surv(data_4$cycle_, data_4$d_)~1, conf.int = 0.95, conf.type = "logit")
+sum_surv_4<-summary(surv_object_4)
+estimate_4<-1-sum_surv_4$surv
+sd_4 <- sum_surv_4$std.err
+
+#weibull plot
+ci_low <- rep(0, 7)
+ci_up <- rep(0, 7)
+
+e = 3.25
+for(i in 1:length(ci_low)){
+  w = exp(e*sd_4[i]/(estimate_4[i]*(1-estimate_4[i])))
+  ci_up[i] = (estimate_4[i]/(estimate_4[i]+(1-estimate_4[i])/w))
+  ci_low[i] = (estimate_4[i]/(estimate_4[i]+(1-estimate_4[i])*w))
+}
+
+plot(
+  log(sum_surv_4$time, 10), log(-log(1-estimate_4)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(0.5, log(100, 10)), ylim = c(-6, 2)
+)
+proportion <- c(0.0005, 0.001, 0.003, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.98, 0.999)
+proportion_axis <- log(-log(1-proportion))
+
+thousand_cycles <- c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+thousand_cycles_axis <- log(thousand_cycles, 10)
+
+axis(3)
+axis(4, las=1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = thousand_cycles_axis, labels = thousand_cycles)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("log minute", side = 3, line = 2)
+mtext("Proportion Failing", side = 2, line = 3)
+mtext("minute", side = 1, line = 2)
+
+box()
+
+ci_low_wei <- log(-log(1-ci_low))#negative value?
+ci_up_wei <- log(-log(1-ci_up))
+print(c(ci_low_wei, ci_up_wei))
+
+for(i in 1:6){
+  lines(c(log(sum_surv_4$time[i], 10), log(sum_surv_4$time[i+1], 10)), rep(ci_up_wei[i], 2), col = "red", lty = 2)
+  lines(c(log(sum_surv_4$time[i], 10), log(sum_surv_4$time[i+1], 10)), rep(ci_low_wei[i], 2), col = "blue", lty = 2)
+}
+abline(lsfit(log(sum_surv_4$time, 10), log(-log(1-estimate_4))), lwd = 3, col = "red")
+
+#exponential plot
+plot(
+  log(sum_surv_4$time, 10), -log(1-estimate_4),
+  xlab = "", ylab = "",
+  pch = 16, col = "black",
+  xlim = c(0.5, log(100, 10)), ylim = c(-0.5, 2),
+  axes = FALSE
+)
+ci_low_exp <- -log(1-ci_low)
+ci_up_exp <- -log(1-ci_up)
+for(i in 1:6){
+  lines(c(log(sum_surv_4$time[i], 10), log(sum_surv_4$time[i+1], 10)), rep(ci_up_exp[i], 2), col = "red", lty = 2)
+  lines(c(log(sum_surv_4$time[i], 10), log(sum_surv_4$time[i+1], 10)), rep(ci_low_exp[i], 2), col = "blue", lty = 2)
+}
+axis(3)
+axis(4, las = 1)
+axis(2, labels = proportion, at = -log(1-proportion), las = 1)
+axis(1, at = thousand_cycles_axis, labels = thousand_cycles)
+mtext("Standard quantile", side = 4, line = 0)
+mtext("log minute", side = 3, line = 2)
+mtext("Proportion Failing", side = 2, line = 3)
+mtext("minute", side = 1, line = 2)
+box()
+
+slope_exp <- lsfit(log(sum_surv_4$time, 10), -log(1-estimate_4))$coefficients[2]
+intercept_exp <- lsfit(log(sum_surv_4$time, 10), -log(1-estimate_4))$coefficients[1]
+
+#b
+abline(lsfit(log(sum_surv_4$time, 10), -log(1-estimate_4)), lwd = 3, col = "red")
+
+#b
+#comments: i think weibull plot is better than exponential plot
+
+#c
+#lec 7, 26
+mle <- sum(data_4$cycle_)/7
+
+print(mle)
+
+mle_se <- mle/sqrt(7)
+
+print(mle_se)
+
+print(c(mle+mle_se*qnorm(0.025), mle-mle_se*qnorm(0.025)))
+
+#d
+print(c((mle+mle_se*qnorm(0.025))*(-log(0.9)), (mle-mle_se*qnorm(0.025))*(-log(0.9))))
+
+#3
+#c
+log(0.9)/(log(0.05)/50)
