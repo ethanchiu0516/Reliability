@@ -1,0 +1,95 @@
+library(fitdistrplus)
+library(survival)
+library(survminer)
+
+data_1 <- data.frame(time = c(rep(1, 103), rep(2, 100), rep(3, 97)), d = c(rep(1, 4), rep(0, 99), rep(1, 5), rep(0, 95), rep(1, 2), rep(0, 95)))
+
+fit_exp <- fitdist(data$time, "exp")
+
+#2
+data_2 <- data.frame(time = c(.82, .99, 1.06, 1.08, 1.24, 1.39, 1.4, rep(1.5, 13)), d = c(rep(1, 7), rep(0, 13)))
+#a
+#CI and estimate
+object<-survfit(Surv(data_2$time, data_2$d)~1, conf.int = 0.95, conf.type = "logit")
+sum_object <- summary(object)
+
+estimate <- 1-sum_object$surv
+sd <- sum_object$std.err
+
+ci_low <- rep(0, 7)
+ci_up <- rep(0, 7)
+
+e = 3.25
+
+for(i in 1:7){
+  w = exp(e*sd[i]/(estimate[i]+(1-estimate[i])))
+  ci_low[i] = (estimate[i]/(estimate[i]+(1-estimate[i])*w))
+  ci_up[i] = (estimate[i]/(estimate[i]+(1-estimate[i])/w))
+}
+
+ci_wei_low <- log(-log(1-ci_low))
+ci_wei_up <- log(-log(1-ci_up))
+
+#plot
+plot(
+  log(sum_object$time, 10), log(-log(1-estimate)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(.82, 10), log(1.6, 10)),
+  ylim = c(log(-log(1-0.05)), log(-log(1-.5)))
+)
+
+for(i in 1:7){
+  lines(c(log(sum_object$time[i], 10), log(sum_object$time[i+1], 10)), rep(ci_wei_low[i], 2), col = "blue", lty = 2)
+  lines(c(log(sum_object$time[i], 10), log(sum_object$time[i+1], 10)), rep(ci_wei_up[i], 2), col = "red", lty = 2)
+}
+
+#axis setting
+proportion <- c(.0005, .001, .003, .005, .01, .02, .05, .1, .2, .3, .5, .7, .8, .9, .95, .98, .999)
+proportion_axis <- log(-log(1-proportion))
+
+x_ <- c(0.5, 0.75, 1, 1.25, 1.5, 1.75)
+x_axis <- log(x_, 10)
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = x_axis, labels = x_)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log time", side = 3, line = 2)
+mtext("Proportion failing", side = 2, line = 3)
+mtext("time", side = 1, line = 2)
+
+box()
+
+#b, slide 44
+beta <- 3
+
+#compute mle
+mle_eta <- (sum(data_2$time^beta)/7)^(1/beta)
+
+#plot
+F_estimate <- 1-exp((-sum_object$time/mle_eta)^beta)
+
+plot(
+  log(sum_object$time, 10), log(-log(1-F_estimate)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(.82, 10), log(1.6, 10)),
+  ylim = c(log(-log(1-0.05)), log(-log(1-.5)))
+)
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = x_axis, labels = x_)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log time", side = 3, line = 2)
+mtext("Proportion failing", side = 2, line = 3)
+mtext("time", side = 1, line = 2)
+
+box()
