@@ -3,8 +3,39 @@ library(survival)
 library(survminer)
 
 data_1 <- data.frame(time = c(rep(1, 103), rep(2, 100), rep(3, 97)), d = c(rep(1, 4), rep(0, 99), rep(1, 5), rep(0, 95), rep(1, 2), rep(0, 95)))
+#a
+mle_function_a <- function(eta){
+  eta = eta
+  return(log(
+    (pweibull(1, shape = 1, scale = eta)-pweibull(0, shape = 1, scale = eta))^4*((1-pweibull(1, 1, eta))^99)*
+    (pweibull(2, 1, eta) - pweibull(1, 1, eta))^5*(1-pweibull(2, 1, eta))^95*
+    (pweibull(3, 1, eta)-pweibull(2, 1, eta))^2*(1-pweibull(3, 1, eta))^95)
+  )
+}
 
-fit_exp <- fitdist(data$time, "exp")
+optimize(mle_function_a, c(0, 1e+7), maximum = "TRUE")
+
+#b
+mle_function_b<-function(parameter){
+  beta = parameter[1]
+  eta = parameter[2]
+  return(-log(
+    ((pweibull(1, shape = beta, scale = eta)-pweibull(0, shape = beta, scale = eta))^4)*((1-pweibull(1, shape = beta, scale = eta))^99)*
+    ((pweibull(2, shape = beta, scale = eta)-pweibull(1, shape = beta, scale = eta))^5)*((1-pweibull(2, shape = beta, scale = eta))^95)*
+    ((pweibull(3, shape = beta, scale = eta)-pweibull(2, shape = beta, scale = eta))^2)*((1-pweibull(3, shape = beta, scale = eta))^95)
+    )
+  )
+}
+
+optim(c(1, 16), mle_function_b)
+
+#c
+print(optimize(mle_function_a, c(0, 1e+7), maximum = "TRUE")$objective)
+print(-optim(c(1, 16), mle_function_b)$value) #multiply by -1
+#observed that they have almost same value, we can conclude that both likelihood function has the same maximum.
+#we are able to skip one likelihood which has more paramter and more complex to estimate.
+#that is, we can just choose exponential estimation to simplfy our work.
+
 
 #2
 data_2 <- data.frame(time = c(.82, .99, 1.06, 1.08, 1.24, 1.39, 1.4, rep(1.5, 13)), d = c(rep(1, 7), rep(0, 13)))
