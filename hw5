@@ -36,6 +36,17 @@ print(-optim(c(1, 16), mle_function_b)$value) #multiply by -1
 #we are able to skip one likelihood which has more paramter and more complex to estimate.
 #that is, we can just choose exponential estimation to simplfy our work.
 
+#d, test whether beta = 1 by log-likelihood ratio test
+test_value<--2*(optimize(mle_function_a, c(0, 1e+7), maximum = "TRUE")$objective-
+  -optim(c(1, 16), mle_function_b)$value)
+
+criteria <- qchisq(0.95, df = 1)
+#result: test value < criteria, we concluded that not reject H0, which is not reject beta = 0
+
+#e
+#plot weibull(eta_mle, beta_mle) and weibull(eta_mle, beta = 1)
+
+
 
 #2
 data_2 <- data.frame(time = c(.82, .99, 1.06, 1.08, 1.24, 1.39, 1.4, rep(1.5, 13)), d = c(rep(1, 7), rep(0, 13)))
@@ -124,3 +135,6 @@ mtext("Proportion failing", side = 2, line = 3)
 mtext("time", side = 1, line = 2)
 
 box()
+
+#3
+covariance_matrix <- matrix(c(c(.058, .037), c(.037, .040)), nrow = 2, ncol = 2)
