@@ -49,17 +49,69 @@ plot(log(v), log(t),
      xlab = "log kV/mm", ylab = "log time"
      )
 
+#lognormal distribution based
+
 #2-2
-#MLE, log normal?
+
+#EqualSig statistical model
+
+voltage <- c(361.4, 219.0, 157.1, 122.4, 100.3)
+#calculate sig_mle
+sig_mle = 0
+
+for(i in voltage){
+  len = dim(data_2[data_2$v == i,])[1]
+  miu_mle_ <- sum(log(data_2[data_2$v == i,]$t))/len
+  sig_mle = sig_mle + sum((log(data_2[data_2$v == i,]$t)-miu_mle_)^2)
+}
+sig_mle = sqrt(sig_mle/length(t))
+print(sig_mle)
+#information matrix, covariance matrix and CI
+
+information_matrix <- matrix(c(c(length(t)/(sig_mle^2), 0), c(0, 2*length(t)/(sig_mle^2))), nrow = 2)
+covariance_matrix <- solve(information_matrix)
+
+equalsig_data <- seq(0, 6)
+
+j = 1
+
+equalsig_data[6] = sig_mle
+
+for(i in voltage){
+  len = dim(data_2[data_2$v == i,])[1]
+  miu_mle_ <- sum(log(data_2[data_2$v == i,]$t))/len
+  cat(i, "voltage's miu_mle is:", miu_mle_, "\n")
+  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix[1, 1], "\n\n")
+  equalsig_data[j] = miu_mle_
+  j = j+1
+}
+
+cat("sig_mle is:", sig_mle, "\n")
+cat("sig_mle's 95% CI is:", sig_mle + qnorm(0.025)*covariance_matrix[2, 2], sig_mle - qnorm(0.025)*covariance_matrix[2, 2], "\n\n")
 
 
+#SepDists statistical model
+#mle, information matrix and covariance matrix
+voltage <- c(361.4, 219.0, 157.1, 122.4, 100.3)
+sepdist_data <- seq(0, 10)
+j = 1
+for(i in voltage){
+  cat("Doing", i, "Voltage\n\n")
+  len = dim(data_2[data_2$v == i,])[1]
+  miu_mle_ <- sum(log(data_2[data_2$v == i,]$t))/len
+  sig_mle_ <- sqrt(sum((log(data_2[data_2$v == i,]$t)-miu_mle_)^2)/len)
+  information_matrix_ <- matrix(c(c(len/sig_mle_^2, 0), c(0, 2*len/sig_mle_)), nrow = 2)
+  covariance_matrix_ <- solve(information_matrix_)
+  cat("miu_mle is:", miu_mle_, "\n")
+  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix_[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix_[1, 1], "\n")
+  cat("sig_mle is:", sig_mle_, "\n")
+  cat("sig_mle's 95% CI is:", sig_mle_ + qnorm(0.025)*covariance_matrix_[2, 2], sig_mle_ - qnorm(0.025)*covariance_matrix_[2, 2], "\n\n")
+  sepdist_data[j] = miu_mle_
+  j = j + 1
+  sepdist_data[j] = sig_mle_
+  j = j + 1
+}
 
-
-
-
-
-
-
-
-
-
+#Doing Hypothesis Test to compare SepDists, EqualSig model
+critical_value = qchisq(.95, 4) #df = 10-6
+test_stattistic = -2*log()
