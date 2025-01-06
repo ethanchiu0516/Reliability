@@ -1,123 +1,286 @@
-#1
-percent1 <- c(.47, .93, 2.11, 2.72, 3.51, 4.34, 4.91, 5.48, 5.99, 6.72, 7.13, 8.00, 8.92, 9.49, 9.87, 10.94)
-percent2 <- c(.71, 1.22, 1.90, 2.3, 2.87, 3.75, 4.42, 4.99, 5.51, 6.07, 6.64, 7.16, 7.78, 8.42, 8.91, 9.28)
-percent3 <- c(.71, 1.17, 1.73, 1.99, 2.53, 2.97, 3.3, 3.94, 4.16, 4.45, 4.89, 5.27, 5.69, 6.02, 6.45, 6.88)
-percent4 <- c(.36, .62, 1.36, 1.95, 2.3, 2.95, 3.39, 3.79, 4.11, 4.5, 4.72, 4.98, 5.28, 5.61, 5.95, 6.14)
-percent5 <- c(.27, .61, 1.11, 1.77, 2.06, 2.58, 2.99, 3.38, 4.05, 4.63, 5.24, 5.62, 6.04, 6.32, 7.1, 7.59)
-percent6 <- c(.36, 1.39, 1.95, 2.86, 3.46, 3.81, 4.53, 5.35, 5.92, 6.71, 7.7, 8.61, 9.15, 9.95, 10.49, 11.01)
-percent7 <- c(.36, .92, 1.21, 1.46, 1.93, 2.39, 2.68, 2.94, 3.42, 4.09, 4.58, 4.84, 5.11, 5.57, 6.11, 7.17)
-percent8 <- c(.46, 1.07, 1.42, 1.77, 2.11, 2.4, 2.78, 3.02, 3.29, 3.75, 4.16, 4.76, 5.16, 5.46, 5.81, 6.24)
-percent9 <- c(.51, .93, 1.57, 1.96, 2.59, 3.29, 3.61, 4.11, 4.6, 4.91, 5.34, 5.84, 6.4, 6.84, 7.2, 7.88)
-percent10 <- c(.41, 1.49, 2.38, 3, 3.84, 4.5, 5.25, 6.26, 7.05, 7.8, 8.32, 8.93, 9.55, 10.45, 11.28, 12.21)
-percent11 <- c(.44, 1, 1.57, 1.96, 2.59, 3.29, 3.61, 4.11, 4.6, 4.91, 5.34, 5.84, 6.4, 6.84, 7.2, 7.88)
-percent12 <- c(.39, .80, 1.35, 1.74, 2.98, 3.59, 4.03, 4.44, 4.79, 5.22, 5.48, 5.96, 6.23, 6.99, 7.37, 7.88)
-percent13 <- c(.3, .74, 1.52, 1.85, 2.39, 2.95, 3.51, 3.92, 5.03, 5.47, 5.84, 6.5, 6.94, 7.39, 7.85, 8.09)
-percent14 <- c(.44, .7, 1.05, 1.35, 1.8, 2.55, 2.83, 3.39, 3.72, 4.09, 4.83, 5.41, 5.76, 6.14, 6.51, 6.88)
-percent15 <- c(.51, .83, 1.29, 1.52, 1.91, 2.27, 2.78, 3.42, 3.78, 4.11, 4.38, 4.63, 5.38, 5.84, 6.16, 6.62)
+library(fitdistrplus)
+library(survival)
+library(survminer)
 
-time <- c(250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000)
+data_1 <- data.frame(time = c(rep(1, 103), rep(2, 100), rep(3, 97)), d = c(rep(1, 4), rep(0, 99), rep(1, 5), rep(0, 95), rep(1, 2), rep(0, 95)))
+#a
+mle_function_a <- function(eta){
+  eta = eta
+  return(log(
+    (pweibull(1, shape = 1, scale = eta)-pweibull(0, shape = 1, scale = eta))^4*((1-pweibull(1, 1, eta))^99)*
+    (pweibull(2, 1, eta) - pweibull(1, 1, eta))^5*(1-pweibull(2, 1, eta))^95*
+    (pweibull(3, 1, eta)-pweibull(2, 1, eta))^2*(1-pweibull(3, 1, eta))^95)
+  )
+}
 
-data_1 <- data.frame(time, percent1, percent2, percent3, percent4, percent5, percent6, percent7, percent8, percent9, percent10, percent11, percent12, percent13, percent14, percent15)
+optimize(mle_function_a, c(0, 1e+7), maximum = "TRUE")
 
-x <- symbol("x")
-a <- symbol("a")
+#b
+mle_function_b<-function(parameter){
+  beta = parameter[1]
+  eta = parameter[2]
+  return(-log(
+    ((pweibull(1, shape = beta, scale = eta)-pweibull(0, shape = beta, scale = eta))^4)*((1-pweibull(1, shape = beta, scale = eta))^99)*
+    ((pweibull(2, shape = beta, scale = eta)-pweibull(1, shape = beta, scale = eta))^5)*((1-pweibull(2, shape = beta, scale = eta))^95)*
+    ((pweibull(3, shape = beta, scale = eta)-pweibull(2, shape = beta, scale = eta))^2)*((1-pweibull(3, shape = beta, scale = eta))^95)
+    )
+  )
+}
 
-#caracas
-#caracas::install_sympy()
-# Define the function
-f <- x^a
+optim(c(1, 16), mle_function_b)
 
-# Perform the symbolic integration
-integral_result <- integrate(f, x)
-integral_result
+#c
+print(optimize(mle_function_a, c(0, 1e+7), maximum = "TRUE")$objective)
+print(-optim(c(1, 16), mle_function_b)$value) #multiply by -1
+#observed that they have almost same value, but using information criteria is better and more fair to compare two method
+#compute AIC
+AIC_exp <- -2*optimize(mle_function_a, c(0, 1e+7), maximum = "TRUE")$objective+2*1
+AIC_wei <- -2*(-optim(c(1, 16), mle_function_b)$value)+2*2
+
+print(c(AIC_exp, AIC_wei))
+#since exp distribution has lower AIC, we concluded that using exp to estimate is better based on AIC
+
+#d, test whether beta = 1 by log-likelihood ratio test
+test_value<--2*(optimize(mle_function_a, c(0, 1e+7), maximum = "TRUE")$objective-
+  -optim(c(1, 16), mle_function_b)$value)
+
+criteria <- qchisq(0.95, df = 1)
+#result: test value < criteria, we concluded that not reject H0, which is not reject beta = 0
+print(c(test_value, criteria))
+
+#e
+#plot weibull(eta_mle, beta_mle)
+object<-survfit(Surv(data_1$time, data_1$d)~1, conf.int = .95, conf.type = "logit")
+sum_object <- summary(object)
+
+estimate <- 1-sum_object$surv
+sd <- sum_object$std.err
+
+plot(
+  log(sum_object$time, 10), log(-log(1-estimate)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(1, 10), log(5, 10)),
+  ylim = c(log(-log(1-0.01)), log(-log(1-.09)))
+)
+
+proportion <- c(.0005, .001, .003, .005, .01, .02, .05, .1, .2, .3, .5, .7, .8, .9, .95, .98, .999)
+proportion_axis <- log(-log(1-proportion))
+
+x_ <- c(0.5, 1, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0)
+x_axis <- log(x_, 10)
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = x_axis, labels = x_)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log year", side = 3, line = 2)
+mtext("Proportion failing", side = 2, line = 3)
+mtext("year", side = 1, line = 2)
+
+slope <- lsfit(log(sum_object$time, 10), log(-log(1-estimate)))$coefficients[2]*log(exp(1),10)
+#fit line with beta_mle = -1.34537, eta_mle = 23.62511
+abline(a = -1.34537/log(exp(1),10)*log(23.62511,10), b = 1.34537/log(exp(1),10), lwd = 3, col = "red")
+
+#plot weibull(eta_mle, beta = 1)
+abline(a = -1/log(exp(1),10)*log(53.49844,10), b = 1/log(exp(1),10), lwd = 3, col = "blue")
+#observed that weibull plot both using mle will fitted better, I guessed it because beta using 1 is still a little bit different from 1.34537
+box()
 
 #2
+data_2 <- data.frame(time = c(.82, .99, 1.06, 1.08, 1.24, 1.39, 1.4, rep(1.5, 13)), d = c(rep(1, 7), rep(0, 13)))
+#a
+#CI and estimate
+object<-survfit(Surv(data_2$time, data_2$d)~1, conf.int = 0.95, conf.type = "logit")
+sum_object <- summary(object)
 
-t <- c(.1, .33, .5, .5, .9, 1, 1.55, 1.65, 2.1, 4, 15, 16, 36, 50, 55, 95, 122, 129, 625, 700, 49, 99, 154.5, 180, 291, 447, 510, 600, 1656, 1721, 188, 297, 405, 744, 1218, 1340, 1715, 3382, 606, 1012, 2520, 2610, 3988, 4100, 5025, 6842)
-d <- rep(1, 46)
-v <- c(rep(361.4, 10), rep(219, 10), rep(157.1, 10), rep(122.4, 8), rep(100.3, 8))
+estimate <- 1-sum_object$surv
+sd <- sum_object$std.err
 
-data_2 <- data.frame(t, d, v)
-#2-1
-#scatter plot with no transformation
-plot(v, t,
-     main = "scatter plot no transformation",
-     xlab = "kV/mm", ylab = "time"
-     )
-plot(log(v), log(t),
-     main = "scatter plot with log-log transformation",
-     xlab = "log kV/mm", ylab = "log time"
-     )
+ci_low <- rep(0, 7)
+ci_up <- rep(0, 7)
 
-#lognormal distribution based
+e = 3.25
 
-#2-2
-
-#EqualSig statistical model
-
-voltage <- c(361.4, 219.0, 157.1, 122.4, 100.3)
-#calculate sig_mle
-sig_mle = 0
-
-for(i in voltage){
-  len = dim(data_2[data_2$v == i,])[1]
-  miu_mle_ <- sum(log(data_2[data_2$v == i,]$t))/len
-  sig_mle = sig_mle + sum((log(data_2[data_2$v == i,]$t)-miu_mle_)^2)
-}
-sig_mle = sqrt(sig_mle/length(t))
-print(sig_mle)
-#information matrix, covariance matrix and CI
-
-information_matrix <- matrix(c(c(length(t)/(sig_mle^2), 0), c(0, 2*length(t)/(sig_mle^2))), nrow = 2)
-covariance_matrix <- solve(information_matrix)
-
-equalsig_data <- seq(0, 6)
-
-j = 1
-
-equalsig_data[6] = sig_mle
-
-for(i in voltage){
-  len = dim(data_2[data_2$v == i,])[1]
-  miu_mle_ <- sum(log(data_2[data_2$v == i,]$t))/len
-  cat(i, "voltage's miu_mle is:", miu_mle_, "\n")
-  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix[1, 1], "\n\n")
-  equalsig_data[j] = miu_mle_
-  j = j+1
+for(i in 1:7){
+  w = exp(e*sd[i]/(estimate[i]+(1-estimate[i])))
+  ci_low[i] = (estimate[i]/(estimate[i]+(1-estimate[i])*w))
+  ci_up[i] = (estimate[i]/(estimate[i]+(1-estimate[i])/w))
 }
 
-cat("sig_mle is:", sig_mle, "\n")
-cat("sig_mle's 95% CI is:", sig_mle + qnorm(0.025)*covariance_matrix[2, 2], sig_mle - qnorm(0.025)*covariance_matrix[2, 2], "\n\n")
+ci_wei_low <- log(-log(1-ci_low))
+ci_wei_up <- log(-log(1-ci_up))
 
+#plot
+plot(
+  log(sum_object$time, 10), log(-log(1-estimate)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(.82, 10), log(1.6, 10)),
+  ylim = c(log(-log(1-0.05)), log(-log(1-.5)))
+)
 
-#SepDists statistical model
-#mle, information matrix and covariance matrix
-voltage <- c(361.4, 219.0, 157.1, 122.4, 100.3)
-sepdist_data <- seq(0, 10)
-j = 1
-for(i in voltage){
-  cat("Doing", i, "Voltage\n\n")
-  len = dim(data_2[data_2$v == i,])[1]
-  miu_mle_ <- sum(log(data_2[data_2$v == i,]$t))/len
-  sig_mle_ <- sqrt(sum((log(data_2[data_2$v == i,]$t)-miu_mle_)^2)/len)
-  information_matrix_ <- matrix(c(c(len/sig_mle_^2, 0), c(0, 2*len/sig_mle_)), nrow = 2)
-  covariance_matrix_ <- solve(information_matrix_)
-  cat("miu_mle is:", miu_mle_, "\n")
-  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix_[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix_[1, 1], "\n")
-  cat("sig_mle is:", sig_mle_, "\n")
-  cat("sig_mle's 95% CI is:", sig_mle_ + qnorm(0.025)*covariance_matrix_[2, 2], sig_mle_ - qnorm(0.025)*covariance_matrix_[2, 2], "\n\n")
-  sepdist_data[j] = miu_mle_
-  j = j + 1
-  sepdist_data[j] = sig_mle_
-  j = j + 1
+for(i in 1:7){
+  lines(c(log(sum_object$time[i], 10), log(sum_object$time[i+1], 10)), rep(ci_wei_low[i], 2), col = "blue", lty = 2)
+  lines(c(log(sum_object$time[i], 10), log(sum_object$time[i+1], 10)), rep(ci_wei_up[i], 2), col = "red", lty = 2)
 }
 
-#Doing Hypothesis Test to compare SepDists, EqualSig model
-critical_value = qchisq(.95, 4) #df = 10-6
-test_stattistic = -2*log()
+#axis setting
+proportion <- c(.0005, .001, .003, .005, .01, .02, .05, .1, .2, .3, .5, .7, .8, .9, .95, .98, .999)
+proportion_axis <- log(-log(1-proportion))
+
+x_ <- c(0.5, 0.75, 1, 1.25, 1.5, 1.75)
+x_axis <- log(x_, 10)
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = x_axis, labels = x_)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log time", side = 3, line = 2)
+mtext("Proportion failing", side = 2, line = 3)
+mtext("time", side = 1, line = 2)
+
+box()
+#compute slope and do transformation to obtain beta
+slope <- lsfit(log(sum_object$time, 10), log(-log(1-estimate)))$coefficients[2]*log(exp(1),10)
+print(slope)
+#observed that 3.77 is closed to 3, so we concluded that the data are consistent with the specified value of beta.
+
+#b, slide 44
+beta <- 3
+
+#compute mle
+mle_eta <- (sum(data_2$time^beta)/7)^(1/beta)
+
+#plot
+
+plot(
+  log(sum_object$time, 10), log(-log(1-estimate)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(.82, 10), log(1.6, 10)),
+  ylim = c(log(-log(1-0.05)), log(-log(1-.5)))
+)
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = x_axis, labels = x_)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log time", side = 3, line = 2)
+mtext("Proportion failing", side = 2, line = 3)
+mtext("time", side = 1, line = 2)
+
+box()
+
+abline(a = -beta/log(exp(1),10)*log(mle_eta,10), b = beta/log(exp(1),10), lwd = 3, col = "red")
 
 
 
+#c
+#compute mle_eta's se
+se_eta <- (mle_eta/beta)*sqrt(1/7)
 
+#compute 95% CI
+print(c(mle_eta-qnorm(0.975)*se_eta, mle_eta+qnorm(0.975)*se_eta))
 
+#d
+#compute F(t) by mle
+F_1000 <- 1-exp(-(1/mle_eta)^beta)
 
+#compute delta-method's derivative function
+diff_function <- exp(-(1/mle_eta)^beta)*(-3)*(1/mle_eta^4)
+#compute 95% CI
+print(c(F_1000-qnorm(0.975)*se_eta*abs(diff_function), F_1000+qnorm(0.975)*se_eta*abs(diff_function)))
+
+#e, redo (a) ~ (c)
+#e_a
+
+#e_b
+beta_e <- 2
+mle_eta_e <- (sum(data_2$time^beta_e)/7)^(1/beta_e)
+
+#plot
+
+plot(
+  log(sum_object$time, 10), log(-log(1-estimate)),
+  xlab = "", ylab = "",
+  axes = FALSE,
+  pch = 16, col = "black",
+  xlim = c(log(.82, 10), log(1.6, 10)),
+  ylim = c(log(-log(1-0.05)), log(-log(1-.5)))
+)
+
+axis(3)
+axis(4, las = 1)
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = x_axis, labels = x_)
+
+mtext("Standard quantile", side = 4, line = 0)
+mtext("Log time", side = 3, line = 2)
+mtext("Proportion failing", side = 2, line = 3)
+mtext("time", side = 1, line = 2)
+
+box()
+
+abline(a = -beta/log(exp(1),10)*log(mle_eta,10), b = beta/log(exp(1),10), lwd = 3, col = "red")
+
+abline(a = -beta_e/log(exp(1),10)*log(mle_eta_e,10), b = beta_e/log(exp(1),10), lwd = 3, col = "blue")
+#not fit as good as beta = 3
+
+#e_c
+#compute mle_eta_e's se
+se_eta_e <- (mle_eta_e/beta_e)*sqrt(1/7)
+
+#compute 95% CI
+print(c(mle_eta_e-qnorm(0.975)*se_eta_e, mle_eta_e+qnorm(0.975)*se_eta_e))
+#larger interval
+
+#observed that mle is impacted by different value of beta. althrough the atual beta = 2, result showed that data fitted better with beta = 3 that we could find evidence from interval of CI wihch has smaller interval when beta = 3. 
+
+#3
+covariance_matrix <- matrix(c(c(.058, .037), c(.037, .040)), nrow = 2, ncol = 2)
+u_hat <- 6.56
+sigma_hat <- 0.534
+
+#a
+mean_estimate <- exp(u_hat+1/2*sigma_hat^2)
+#define function g = exp(u+1/2*sigma^2)
+diff_u_g <- exp(u_hat+1/2*sigma_hat^2)
+diff_sigma_g <- exp(u_hat+1/2*sigma_hat^2)*sigma_hat
+diff_sigma_u_g <- exp(u_hat+1/2*sigma_hat^2)*sigma_hat
+
+#compute variacne of function g
+var_g <- diff_u_g^2*covariance_matrix[1, 1]+diff_sigma_g^2*covariance_matrix[2, 2]+2*diff_sigma_u_g*covariance_matrix[1, 2]
+
+#compute CI
+print(c(mean_estimate-qnorm(0.975)*sqrt(var_g), mean_estimate+qnorm(0.975)*sqrt(var_g)))
+
+#b, slide 32
+log_tp_10_hat <- u_hat+sigma_hat*qnorm(0.1)
+se_log_tp <- sqrt(covariance_matrix[1, 1] + qnorm(.1)^2*covariance_matrix[2, 2] + 2*qnorm(.1)*covariance_matrix[1, 2])
+print(c(exp(log_tp_10_hat-qnorm(.975)*se_log_tp), exp(log_tp_10_hat+qnorm(.975)*se_log_tp)))
+
+#c
+F_500 <- 10/15
+#using pointwise binomial-based conservative confidence interval
+F_low <- qbeta(.025, 10, 15-10+1)
+F_up <- qbeta(.975, 10+1, 15-10)
+print(c(F_low, F_up))
+
+#d
+F_500 <- 10/15
+#compute F(500)'s CI baesd on logit trasformation
+se_F <- sqrt(1/15*F_500*(1-F_500))
+w <- exp(qnorm(0.975)*se_F/(F_500*(1-F_500)))
+F_low <- F_500/(F_500+(1-F_500)*w)
+F_up <- F_500/(F_500+(1-F_500)/w)
+print(c(F_low, F_up))
