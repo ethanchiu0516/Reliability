@@ -43,11 +43,11 @@ data_2 <- data.frame(t, d, v)
 plot(v, t,
      main = "scatter plot no transformation",
      xlab = "kV/mm", ylab = "time"
-     )
+)
 plot(log(v), log(t),
      main = "scatter plot with log-log transformation",
      xlab = "log kV/mm", ylab = "log time"
-     )
+)
 
 #lognormal distribution based
 
@@ -65,11 +65,8 @@ for(i in voltage){
   sig_mle = sig_mle + sum((log(data_2[data_2$v == i,]$t)-miu_mle_)^2)
 }
 sig_mle = sqrt(sig_mle/length(t))
-print(sig_mle)
-#information matrix, covariance matrix and CI
 
-information_matrix <- matrix(c(c(length(t)/(sig_mle^2), 0), c(0, 2*length(t)/(sig_mle^2))), nrow = 2)
-covariance_matrix <- solve(information_matrix)
+#information matrix, covariance matrix and CI
 
 equalsig_data <- seq(0, 6)
 
@@ -80,6 +77,10 @@ equalsig_data[6] = sig_mle
 for(i in voltage){
   len = dim(data_2[data_2$v == i,])[1]
   miu_mle_ <- sum(log(data_2[data_2$v == i,]$t))/len
+  
+  information_matrix <- matrix(c(c(len/(sig_mle^2), 0), c(0, 2*len/(sig_mle^2))), nrow = 2)
+  covariance_matrix <- solve(information_matrix)
+  
   cat(i, "voltage's miu_mle is:", miu_mle_, "\n")
   cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix[1, 1], "\n\n")
   equalsig_data[j] = miu_mle_
