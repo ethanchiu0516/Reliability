@@ -68,7 +68,7 @@ sig_mle = sqrt(sig_mle/length(t))
 
 #information matrix, covariance matrix and CI
 
-equalsig_data <- seq(0, 6)
+equalsig_data <- rep(0, 6)
 
 j = 1
 
@@ -94,8 +94,9 @@ cat("sig_mle's 95% CI is:", sig_mle + qnorm(0.025)*covariance_matrix[2, 2], sig_
 #SepDists statistical model
 #mle, information matrix and covariance matrix
 voltage <- c(361.4, 219.0, 157.1, 122.4, 100.3)
-sepdist_data <- seq(0, 10)
+sepdist_data <- rep(0, 10)
 j = 1
+k = 6
 for(i in voltage){
   cat("Doing", i, "Voltage\n\n")
   len = dim(data_2[data_2$v == i,])[1]
@@ -107,12 +108,132 @@ for(i in voltage){
   cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix_[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix_[1, 1], "\n")
   cat("sig_mle is:", sig_mle_, "\n")
   cat("sig_mle's 95% CI is:", sig_mle_ + qnorm(0.025)*covariance_matrix_[2, 2], sig_mle_ - qnorm(0.025)*covariance_matrix_[2, 2], "\n\n")
+  
   sepdist_data[j] = miu_mle_
   j = j + 1
-  sepdist_data[j] = sig_mle_
-  j = j + 1
+  
+  sepdist_data[k] = sig_mle_
+  k = k + 1
+  print(covariance_matrix_)
 }
 
 #Doing Hypothesis Test to compare SepDists, EqualSig model
 critical_value = qchisq(.95, 4) #df = 10-6
-test_stattistic = -2*log()
+#compute
+h0_stat_compute <- function(data_2, parameter, voltage){
+  len_para = length(parameter)
+  len_all = length(data_2$t)
+  likelihood_stat = 0
+  for(i in 1:5){
+    len = dim(data_2[data_2$v == voltage[i],])[1] #group length of data
+    temp = -(1/(2*parameter[6]^2))*sum((log(data_2[data_2$v == voltage[i],]$t)-parameter[i])^2)
+    likelihood_stat = likelihood_stat + temp
+  }
+  
+  likelihood_stat = likelihood_stat + (-sum(log(data_2$t))-len_all*log(parameter[6])-.5*len_all*log(2*pi))
+  
+  return(likelihood_stat)
+}
+h0_stat <- h0_stat_compute(data_2, equalsig_data, voltage)
+
+h1_stat_compute <- function(data_2, parameter, voltage){
+  len_all = length(data_2$t)
+  likelihood_stat = 0
+  for(i in 1:5){
+    len = dim(data_2[data_2$v == voltage[i],])[1] #group length of data
+    temp1 = -(1/(2*parameter[i+5]^2))*sum((log(data_2[data_2$v == voltage[i],]$t)-parameter[i])^2)
+    likelihood_stat = likelihood_stat + temp1
+    temp2 = -len*log(parameter[i+5])
+    likelihood_stat = likelihood_stat + temp2
+  }
+  likelihood_stat = likelihood_stat + (-sum(log(data_2$t))-.5*len_all*log(2*pi))
+  
+  return(likelihood_stat)
+}
+h1_stat <- h1_stat_compute(data_2, sepdist_data, voltage)
+
+test_statistic <- -2*(h0_stat - h1_stat)
+
+cat("critical value:", critical_value, "\n\n")
+cat("test value:", test_statistic, "\n\n")  #h0 not reject, using equal sigma to do probability plot
+
+#Multiple probability plot, 219.0 kV example
+
+fi_p <- (log(data_2[data_2$v == voltage[2],]$t)-equalsig_data[2])/equalsig_data[6]
+
+pnorm(fi_p)
+
+plot(log(data_2[data_2$v == voltage[2],]$t), fi_p)
+
+#unequal sigma
+len_point <- length(data_2[data_2$v == voltage[2],]$t)
+time <- data_2[data_2$v == voltage[2],]$t
+proportion_failing <- seq(1, len_point)/len_point
+plot(log(time), qnorm(proportion_failing),
+     axes = FALSE,
+     xlim = c(log(min(data_2$t))-1, log(max(data_2$t))+1),
+     main = "multiple probability plot with unequal sigma"
+     )
+fi_p <- (log(data_2[data_2$v == voltage[2],]$t)-sepdist_data[2])/sepdist_data[7]
+abline(a = lsfit(log(data_2[data_2$v == voltage[2],]$t), fi_p)$coefficients[1], b = lsfit(log(data_2[data_2$v == voltage[2],]$t), fi_p)$coefficients[2])
+
+for(i in 1:5){
+  len_point <- length(data_2[data_2$v == voltage[i],]$t)
+  time <- data_2[data_2$v == voltage[i],]$t
+  fi_p <- (log(data_2[data_2$v == voltage[i],]$t)-sepdist_data[i])/sepdist_data[i+5]
+  proportion_failing <- seq(1, len_point)/len_point
+  abline(a = lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients[1], b = lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients[2])
+  for(j in 1:len_point){
+    points(log(time[j]), qnorm(proportion_failing[j]))
+  }
+  print(lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients)
+  print(log(time))
+}
+
+proportion <- c(.0005, .001, .003, .005, .01, .02, .05, .1, .2, .3, .5, .7, .8, .9 ,.95, .98, .999)
+proportion_axis <- qnorm(proportion)
+
+volt <- c(.1, .5, 10, 50, 100, 500, 1000, 2000, 3000, 4000, 5000, 6000)
+volt_axis <- log(volt)
+
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = volt_axis, labels = volt, las = 1)
+
+box()
+
+#equal sigma
+
+len_point <- length(data_2[data_2$v == voltage[2],]$t)
+time <- data_2[data_2$v == voltage[2],]$t
+proportion_failing <- seq(1, len_point)/len_point
+plot(log(time), qnorm(proportion_failing),
+     axes = FALSE,
+     xlim = c(log(min(data_2$t))-1, log(max(data_2$t))+1),
+     main = "multiple probability plot with equal sigma"
+)
+fi_p <- (log(data_2[data_2$v == voltage[2],]$t)-equalsig_data[2])/equalsig_data[6]
+abline(a = lsfit(log(data_2[data_2$v == voltage[2],]$t), fi_p)$coefficients[1], b = lsfit(log(data_2[data_2$v == voltage[2],]$t), fi_p)$coefficients[2])
+
+for(i in 1:5){
+  len_point <- length(data_2[data_2$v == voltage[i],]$t)
+  time <- data_2[data_2$v == voltage[i],]$t
+  fi_p <- (log(data_2[data_2$v == voltage[i],]$t)-equalsig_data[i])/equalsig_data[6]
+  proportion_failing <- seq(1, len_point)/len_point
+  abline(a = lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients[1], b = lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients[2])
+  for(j in 1:len_point){
+    points(log(time[j]), qnorm(proportion_failing[j]))
+  }
+  print(lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients)
+  print(log(time))
+}
+
+proportion <- c(.0005, .001, .003, .005, .01, .02, .05, .1, .2, .3, .5, .7, .8, .9 ,.95, .98, .999)
+proportion_axis <- qnorm(proportion)
+
+volt <- c(.1, .5, 10, 50, 100, 500, 1000, 2000, 3000, 4000, 5000, 6000)
+volt_axis <- log(volt)
+
+axis(2, at = proportion_axis, labels = proportion, las = 1)
+axis(1, at = volt_axis, labels = volt, las = 1)
+
+box()
