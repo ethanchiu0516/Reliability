@@ -82,13 +82,13 @@ for(i in voltage){
   covariance_matrix <- solve(information_matrix)
   
   cat(i, "voltage's miu_mle is:", miu_mle_, "\n")
-  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix[1, 1], "\n\n")
+  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*sqrt(covariance_matrix[1, 1]), miu_mle_ - qnorm(0.025)*sqrt(covariance_matrix[1, 1]), "\n\n")
   equalsig_data[j] = miu_mle_
   j = j+1
 }
 
 cat("sig_mle is:", sig_mle, "\n")
-cat("sig_mle's 95% CI is:", sig_mle + qnorm(0.025)*covariance_matrix[2, 2], sig_mle - qnorm(0.025)*covariance_matrix[2, 2], "\n\n")
+cat("sig_mle's 95% CI is:", sig_mle + qnorm(0.025)*sqrt(covariance_matrix[2, 2]), sig_mle - qnorm(0.025)*sqrt(covariance_matrix[2, 2]), "\n\n")
 
 
 #SepDists statistical model
@@ -105,9 +105,9 @@ for(i in voltage){
   information_matrix_ <- matrix(c(c(len/sig_mle_^2, 0), c(0, 2*len/sig_mle_)), nrow = 2)
   covariance_matrix_ <- solve(information_matrix_)
   cat("miu_mle is:", miu_mle_, "\n")
-  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*covariance_matrix_[1, 1], miu_mle_ - qnorm(0.025)*covariance_matrix_[1, 1], "\n")
+  cat("miu_mle's 95% CI is:", miu_mle_ + qnorm(0.025)*sqrt(covariance_matrix_[1, 1]), miu_mle_ - qnorm(0.025)*sqrt(covariance_matrix_[1, 1]), "\n")
   cat("sig_mle is:", sig_mle_, "\n")
-  cat("sig_mle's 95% CI is:", sig_mle_ + qnorm(0.025)*covariance_matrix_[2, 2], sig_mle_ - qnorm(0.025)*covariance_matrix_[2, 2], "\n\n")
+  cat("sig_mle's 95% CI is:", sig_mle_ + qnorm(0.025)*sqrt(covariance_matrix_[2, 2]), sig_mle_ - qnorm(0.025)*sqrt(covariance_matrix_[2, 2]), "\n\n")
   
   sepdist_data[j] = miu_mle_
   j = j + 1
@@ -157,7 +157,14 @@ test_statistic <- -2*(h0_stat - h1_stat)
 cat("critical value:", critical_value, "\n\n")
 cat("test value:", test_statistic, "\n\n")  #h0 not reject, using equal sigma to do probability plot
 
-#Multiple probability plot, 219.0 kV example
+#AIC
+AIC_equalsig <- -2*h0_stat + 2*6
+AIC_sepdist <- -2*h1_stat + 2*10
+
+cat("EqualSig's AIC:", AIC_equalsig, "\n\n")
+cat("SepDists' AIC:", AIC_sepdist, "\n\n")
+
+#Multiple probability plot
 
 fi_p <- (log(data_2[data_2$v == voltage[2],]$t)-equalsig_data[2])/equalsig_data[6]
 
