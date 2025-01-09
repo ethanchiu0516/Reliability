@@ -19,17 +19,51 @@ time <- c(250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3
 
 data_1 <- data.frame(time, percent1, percent2, percent3, percent4, percent5, percent6, percent7, percent8, percent9, percent10, percent11, percent12, percent13, percent14, percent15)
 
-x <- symbol("x")
-a <- symbol("a")
+#c
 
-#caracas
-#caracas::install_sympy()
-# Define the function
-f <- x^a
 
-# Perform the symbolic integration
-integral_result <- integrate(f, x)
-integral_result
+
+#d
+#pseudo failure
+D_f = 10
+
+pseudo_failure <- rep(0, 15)
+
+for(i in 2:16){
+  beta_hat = sum(data_1$time*data_1[, i])/sum(data_1$time^2)
+  print(beta_hat)
+  pseudo_failure[i-1] = D_f/beta_hat
+}
+
+#plot
+plot(data_1$time, data_1$percent1,
+     xlab = "time", ylab = "percent increase(%)",
+     xlim = c(0, 6000), ylim = c(0, 14),
+     cex = 0,
+     main = "degradation model with pseudo failure plot (Df = 10)")
+for(j in 1:16){
+  if(j != 16){
+    segments(x0 = data_1[j, 1], y0 = data_1[j, 2], x1 = data_1[j+1, 1], y1 = data_1[j+1, 2])
+  }else{
+    segments(x0 = data_1[j, 1], y0 = data_1[j, 2], x1 = pseudo_failure[1], y1 = 10, lty = 2)
+  }
+}
+for(i in 3:16){
+  for(j in 1:16){
+    #cat(data_1[j, 1], data_1[j, i], "\n\n")
+    points(data_1[j, 1], data_1[j, i], cex = 0)
+    if(j != 16){
+      segments(x0 = data_1[j, 1], y0 = data_1[j, i], x1 = data_1[j+1, 1], y1 = data_1[j+1, i])
+    }else{
+      segments(x0 = data_1[j, 1], y0 = data_1[j, i], x1 = pseudo_failure[i-1], y1 = 10, lty = 2)
+    }
+  }
+}
+
+abline(h = 10)
+
+
+
 
 #2
 
@@ -166,12 +200,6 @@ cat("SepDists' AIC:", AIC_sepdist, "\n\n")
 
 #Multiple probability plot
 
-fi_p <- (log(data_2[data_2$v == voltage[2],]$t)-equalsig_data[2])/equalsig_data[6]
-
-pnorm(fi_p)
-
-plot(log(data_2[data_2$v == voltage[2],]$t), fi_p)
-
 #unequal sigma
 len_point <- length(data_2[data_2$v == voltage[2],]$t)
 time <- data_2[data_2$v == voltage[2],]$t
@@ -179,7 +207,8 @@ proportion_failing <- seq(1, len_point)/len_point
 plot(log(time), qnorm(proportion_failing),
      axes = FALSE,
      xlim = c(log(min(data_2$t))-1, log(max(data_2$t))+1),
-     main = "multiple probability plot with unequal sigma"
+     main = "multiple probability plot with unequal sigma",
+     xlab = "log(time)", ylab = "proportion failing"
      )
 fi_p <- (log(data_2[data_2$v == voltage[2],]$t)-sepdist_data[2])/sepdist_data[7]
 abline(a = lsfit(log(data_2[data_2$v == voltage[2],]$t), fi_p)$coefficients[1], b = lsfit(log(data_2[data_2$v == voltage[2],]$t), fi_p)$coefficients[2])
@@ -193,8 +222,6 @@ for(i in 1:5){
   for(j in 1:len_point){
     points(log(time[j]), qnorm(proportion_failing[j]))
   }
-  print(lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients)
-  print(log(time))
 }
 
 proportion <- c(.0005, .001, .003, .005, .01, .02, .05, .1, .2, .3, .5, .7, .8, .9 ,.95, .98, .999)
@@ -216,6 +243,7 @@ proportion_failing <- seq(1, len_point)/len_point
 plot(log(time), qnorm(proportion_failing),
      axes = FALSE,
      xlim = c(log(min(data_2$t))-1, log(max(data_2$t))+1),
+     xlab = "log(time)", ylab = "proportion failing",
      main = "multiple probability plot with equal sigma"
 )
 fi_p <- (log(data_2[data_2$v == voltage[2],]$t)-equalsig_data[2])/equalsig_data[6]
@@ -230,8 +258,6 @@ for(i in 1:5){
   for(j in 1:len_point){
     points(log(time[j]), qnorm(proportion_failing[j]))
   }
-  print(lsfit(log(data_2[data_2$v == voltage[i],]$t), fi_p)$coefficients)
-  print(log(time))
 }
 
 proportion <- c(.0005, .001, .003, .005, .01, .02, .05, .1, .2, .3, .5, .7, .8, .9 ,.95, .98, .999)
@@ -244,3 +270,44 @@ axis(2, at = proportion_axis, labels = proportion, las = 1)
 axis(1, at = volt_axis, labels = volt, las = 1)
 
 box()
+
+#2-3
+
+#fit inverse power law model and compute beta0, beta1, sigma
+model_ALT <- lm(log(data_2$t)~log(data_2$v))
+summary(model_ALT)
+
+beta_0 <- model_ALT$coefficients[1]
+beta_1 <- model_ALT$coefficients[2]
+
+sigma_ALT = 0
+
+for(i in 1:5){
+  sigma_ALT = sigma_ALT + sum((log(data_2[data_2$v == voltage[i], ]$t)-mean(log(data_2[data_2$v == voltage[i], ]$t)))^2)
+}
+
+sigma_ALT = sqrt(sigma_ALT/46)
+
+cat("beta0:", beta_0, "\n\n")
+cat("beta1:", beta_1, "\n\n")
+cat("sigma:", sigma_ALT, "\n\n")
+
+#model comparison
+value = 0
+for(i in 1:5){
+  temp = sum((log(data_2[data_2$v == voltage[i],]$t)-(beta_0+beta_1*log(voltage[i])))^2)
+  value = value+temp
+}
+
+AIC_ALT <- -2*(-sum(log(data_2$t))-46*log(sigma_ALT)-23*log(2*pi)-(.5/sigma_ALT^2)*value)+6
+
+cat("AIC:", AIC_ALT, "\n\n")
+
+#2-4
+standard_residual <- residuals(model_ALT)/(summary(model_ALT)$sigma*sqrt(1-influence(model_ALT)$hat))
+
+plot(model_ALT$fitted.values, standard_residual,
+     xlab = "fitted value", ylab = "standardized residuals",
+     main = "standardized residuals plot")
+
+
